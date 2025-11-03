@@ -25,9 +25,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install make patch
 
-      - name: Apply whisper.cpp patches
+      - name: Setup dependencies and patch dependencies
         run: |
-          bash whisper.cpp.patches/apply-patches.sh
+          make setup
 
       - name: Cache cosmocc toolchain
         id: cache-cosmocc-toolchain
