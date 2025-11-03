@@ -5,6 +5,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WHISPER_DIR="$SCRIPT_DIR/../whisper.cpp"
+PATCHES_DIR="$SCRIPT_DIR/patches"
+LLAMAFILE_FILES_DIR="$SCRIPT_DIR/llamafile-files"
 
 cd "$WHISPER_DIR"
 
@@ -18,18 +20,12 @@ echo "Applying patches to whisper.cpp submodule..."
 
 # Step 1: Apply patches to modify files in their original locations
 echo "Applying modifications to upstream files..."
-patch -p0 < "$SCRIPT_DIR/001-server-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/002-common-cpp-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/003-common-h-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/004-whisper-cpp-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/005-whisper-h-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/006-main-cpp-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/007-stream-cpp-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/008-whisper-mel-cuda-cu-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/009-grammar-parser-cpp-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/010-grammar-parser-h-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/011-dr-wav-h-llamafile-integration.patch"
-patch -p0 < "$SCRIPT_DIR/012-httplib-h-llamafile-integration.patch"
+for patch_file in "$PATCHES_DIR"/*.patch; do
+    if [ -f "$patch_file" ]; then
+        echo "Applying $(basename "$patch_file")..."
+        patch -p0 < "$patch_file"
+    fi
+done
 
 # Step 2: Copy modified files from their original locations to root
 echo "Copying modified files to root directory..."
@@ -48,11 +44,12 @@ cp include/whisper.h .
 
 # Step 3: Copy new llamafile-specific files to root
 echo "Copying llamafile-specific files..."
-cp "$SCRIPT_DIR/BUILD.mk" .
-cp "$SCRIPT_DIR/README.llamafile" .
-cp "$SCRIPT_DIR/README.md" .
+cp "$LLAMAFILE_FILES_DIR/BUILD.mk" .
+cp "$LLAMAFILE_FILES_DIR/README.llamafile" .
+cp "$LLAMAFILE_FILES_DIR/README.md" .
 # Copy header files, excluding those that were patched
-for file in "$SCRIPT_DIR"/*.h; do
+for file in "$LLAMAFILE_FILES_DIR"/*.h; do
+    [ -f "$file" ] || continue
     filename=$(basename "$file")
     if [ "$filename" != "common.h" ] && [ "$filename" != "whisper.h" ] && \
        [ "$filename" != "grammar-parser.h" ] && [ "$filename" != "dr_wav.h" ] && \
@@ -60,9 +57,10 @@ for file in "$SCRIPT_DIR"/*.h; do
         cp "$file" .
     fi
 done
-cp "$SCRIPT_DIR"/*.c .
+cp "$LLAMAFILE_FILES_DIR"/*.c . 2>/dev/null || true
 # Copy cpp files, excluding those that were patched
-for file in "$SCRIPT_DIR"/*.cpp; do
+for file in "$LLAMAFILE_FILES_DIR"/*.cpp; do
+    [ -f "$file" ] || continue
     filename=$(basename "$file")
     if [ "$filename" != "common.cpp" ] && [ "$filename" != "server.cpp" ] && \
        [ "$filename" != "whisper.cpp" ] && [ "$filename" != "main.cpp" ] && \
@@ -70,12 +68,12 @@ for file in "$SCRIPT_DIR"/*.cpp; do
         cp "$file" .
     fi
 done
-cp "$SCRIPT_DIR"/*.hpp .
+cp "$LLAMAFILE_FILES_DIR"/*.hpp . 2>/dev/null || true
 # Don't copy .cu files since whisper-mel-cuda.cu is now patched
-cp "$SCRIPT_DIR/main.1" .
-cp "$SCRIPT_DIR/main.1.asc" .
-cp "$SCRIPT_DIR/jfk.wav" .
-cp -r "$SCRIPT_DIR/doc" .
+cp "$LLAMAFILE_FILES_DIR/main.1" .
+cp "$LLAMAFILE_FILES_DIR/main.1.asc" .
+cp "$LLAMAFILE_FILES_DIR/jfk.wav" .
+cp -r "$LLAMAFILE_FILES_DIR/doc" .
 
 # Step 4: Remove unnecessary files and directories
 echo "Removing unnecessary files and directories..."
